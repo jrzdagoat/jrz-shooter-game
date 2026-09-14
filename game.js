@@ -23,10 +23,31 @@ const MELEES = [
 ];
 
 const MAPS = [
-  { id:'warehouse', name:'Warehouse',     desc:'Tight indoor crates & containers.', sky:0x1a1c22, fog:0x1a1c22, floor:0x2b2d33, wall:0x3a3d45, accent:0xd18b2c, fogNear:15 },
-  { id:'desert',    name:'Desert Outpost',desc:'Open sandy compound with bunkers.', sky:0xcbb27a, fog:0xcbb27a, floor:0xc2a562, wall:0x8a6f3a, accent:0xdb5a2b, fogNear:20 },
-  { id:'neon',      name:'Neon City',     desc:'Night rooftops under neon glow.',   sky:0x0a0b14, fog:0x0a0b14, floor:0x181a26, wall:0x232840, accent:0x5b8cff, fogNear:14 },
-  { id:'icebase',   name:'Ice Base',      desc:'Frozen research base, open sightlines.', sky:0xcfe8f0, fog:0xcfe8f0, floor:0xdceef5, wall:0x8fb3c4, accent:0x2fb6d6, fogNear:22 },
+  { id:'warehouse', name:'Warehouse',     desc:'Tight indoor crates & containers.', skyTop:0x2b3a4a, sky:0x8fa3b8, floor:0x33363d, wall:0x3d4149, accent:0xd18b2c, fogNear:16, neonTrim:false,
+    buildings:[
+      { x:-15, z:-8,  w:20, d:16, h:7,  doorSide:'south', doorWidth:4.5 },
+      { x:16,  z:10,  w:12, d:12, h:6,  doorSide:'west',  doorWidth:3.5 },
+      { x:14,  z:-16, w:9,  d:9,  h:5,  doorSide:'north', doorWidth:3   },
+    ] },
+  { id:'desert',    name:'Desert Outpost',desc:'Open sandy compound with bunkers.', skyTop:0x5c8fc9, sky:0xe8d9a8, floor:0xc2a562, wall:0x9c8158, accent:0xdb5a2b, fogNear:22, neonTrim:false,
+    buildings:[
+      { x:-14, z:6,   w:14, d:11, h:4.5, doorSide:'east',  doorWidth:3.5 },
+      { x:12,  z:-12, w:11, d:11, h:4,   doorSide:'north', doorWidth:3.5 },
+      { x:-16, z:-16, w:8,  d:8,  h:4,   doorSide:'south', doorWidth:3   },
+    ] },
+  { id:'neon',      name:'Neon City',     desc:'Night rooftops under neon glow.',   skyTop:0x05060c, sky:0x151a30, floor:0x14151c, wall:0x1e2333, accent:0x5b8cff, fogNear:15, neonTrim:true,
+    buildings:[
+      { x:-13, z:-10, w:11, d:11, h:11, doorSide:'east',  doorWidth:3.5 },
+      { x:14,  z:8,   w:13, d:9,  h:9,  doorSide:'west',  doorWidth:3.5 },
+      { x:15,  z:-14, w:8,  d:8,  h:14, doorSide:'south', doorWidth:3   },
+      { x:-16, z:14,  w:9,  d:9,  h:8,  doorSide:'north', doorWidth:3   },
+    ] },
+  { id:'icebase',   name:'Ice Base',      desc:'Frozen research base, open sightlines.', skyTop:0x6fa9c9, sky:0xdff1f7, floor:0xcfe6ee, wall:0x8fb8cc, accent:0x2fb6d6, fogNear:24, neonTrim:false,
+    buildings:[
+      { x:0,   z:-18, w:22, d:9,  h:5.5, doorSide:'south', doorWidth:5   },
+      { x:-16, z:10,  w:10, d:10, h:5,   doorSide:'east',  doorWidth:3.5 },
+      { x:16,  z:12,  w:9,  d:9,  h:4.5, doorSide:'west',  doorWidth:3   },
+    ] },
 ];
 
 /* ---------------------------------------------------------
@@ -176,7 +197,7 @@ function renderMapGrid(){
     card.className = 'map-card' + (m.id === state.selectedMap ? ' selected' : '');
     const thumb = document.createElement('div');
     thumb.className = 'map-thumb';
-    thumb.style.background = `linear-gradient(160deg, #${(new THREE.Color(m.sky)).getHexString()}, #${(new THREE.Color(m.wall)).getHexString()})`;
+    thumb.style.background = `linear-gradient(160deg, #${(new THREE.Color(m.skyTop)).getHexString()}, #${(new THREE.Color(m.wall)).getHexString()})`;
     card.appendChild(thumb);
     const info = document.createElement('div');
     info.className = 'map-info';
@@ -357,15 +378,17 @@ class GameEngine{
     this.renderer = new THREE.WebGLRenderer({ canvas:this.canvas, antialias: settings.quality==='high', powerPreference:'high-performance' });
     this.applyQuality();
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(this.mapConfig.sky);
+    this.scene.background = this.makeSkyTexture(this.mapConfig.skyTop, this.mapConfig.sky);
     this.applyDrawDistance();
 
     this.camera = new THREE.PerspectiveCamera(78, window.innerWidth/window.innerHeight, 0.1, 500);
     this.camera.position.copy(this.player.pos);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+    const hemi = new THREE.HemisphereLight(this.mapConfig.skyTop, this.mapConfig.floor, 0.65);
+    this.scene.add(hemi);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.28);
     this.scene.add(ambient);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+    const sun = new THREE.DirectionalLight(0xffffff, this.mapConfig.neonTrim ? 0.35 : 0.9);
     sun.position.set(40, 60, 20);
     sun.castShadow = settings.shadows;
     if(settings.shadows){
@@ -385,6 +408,22 @@ class GameEngine{
     this.raycaster = new THREE.Raycaster();
   }
 
+  makeSkyTexture(topHex, bottomHex){
+    const c = document.createElement('canvas');
+    c.width = 8; c.height = 256;
+    const ctx = c.getContext('2d');
+    const top = new THREE.Color(topHex), bot = new THREE.Color(bottomHex);
+    const grad = ctx.createLinearGradient(0,0,0,256);
+    grad.addColorStop(0, `rgb(${top.r*255},${top.g*255},${top.b*255})`);
+    grad.addColorStop(0.65, `rgb(${bot.r*255},${bot.g*255},${bot.b*255})`);
+    grad.addColorStop(1, `rgb(${bot.r*255},${bot.g*255},${bot.b*255})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,8,256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace || tex.colorSpace;
+    return tex;
+  }
+
   applyQuality(){
     let pr = 1;
     if(settings.quality === 'low') pr = 1;
@@ -396,7 +435,7 @@ class GameEngine{
   }
 
   applyDrawDistance(){
-    if(this.scene) this.scene.fog = new THREE.Fog(this.mapConfig.fog, this.mapConfig.fogNear, settings.drawDistance);
+    if(this.scene) this.scene.fog = new THREE.Fog(this.mapConfig.sky, this.mapConfig.fogNear, settings.drawDistance);
     if(this.camera) this.camera.far = settings.drawDistance + 40;
     if(this.camera) this.camera.updateProjectionMatrix();
   }
@@ -410,42 +449,102 @@ class GameEngine{
   buildViewmodel(){
     while(this.weaponGroup.children.length) this.weaponGroup.remove(this.weaponGroup.children[0]);
     const w = this.activeSlot === 1 ? this.gun : this.melee;
-    const mat = new THREE.MeshLambertMaterial({ color: w.color });
     const group = new THREE.Group();
-    if(this.activeSlot === 1){
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.5), mat);
-      const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07,0.18,0.08), mat);
-      grip.position.set(0,-0.12,0.15);
-      group.add(body, grip);
-      if(this.gun.id !== 'pistol'){
-        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.06,0.16,0.07), new THREE.MeshLambertMaterial({color:0x222}));
-        mag.position.set(0,-0.14,0.02);
-        group.add(mag);
-      }
-    } else {
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.32,6), new THREE.MeshLambertMaterial({color:0x3a2a1a}));
-      handle.rotation.z = Math.PI/2.3;
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.32,0.02), mat);
-      blade.position.set(0.14,0.18,0);
-      group.add(handle, blade);
-    }
-    group.position.set(0.28, -0.28, -0.55);
-    group.rotation.y = 0.15;
+    if(this.activeSlot === 1) this.buildGunModel(group, w);
+    else this.buildMeleeModel(group, w);
+    group.position.set(0.32, -0.32, -0.62);
+    group.rotation.y = 0.12;
     this.weaponGroup.add(group);
     this.viewmodel = group;
     this.viewmodelBaseY = group.position.y;
   }
 
+  /** Builds a detailed low-poly gun model out of primitives, shape varying by weapon id. */
+  buildGunModel(group, w){
+    const metal = new THREE.MeshLambertMaterial({ color: w.color });
+    const dark  = new THREE.MeshLambertMaterial({ color: 0x1c1e22 });
+    const wood  = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+    const accent = new THREE.MeshLambertMaterial({ color: 0xffb020 });
+    const add = (geo, mat, x,y,z, rx=0,ry=0,rz=0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+      group.add(m); return m;
+    };
+
+    if(w.id === 'pistol'){
+      add(new THREE.BoxGeometry(0.10,0.16,0.32), metal, 0,0,0);            // slide
+      add(new THREE.BoxGeometry(0.09,0.22,0.10), dark, 0,-0.17,0.09);      // grip
+      add(new THREE.BoxGeometry(0.03,0.05,0.10), dark, 0,-0.03,0.20);      // trigger guard
+      add(new THREE.BoxGeometry(0.02,0.02,0.10), accent, 0,0.07,-0.14);    // front sight
+    } else if(w.id === 'smg'){
+      add(new THREE.BoxGeometry(0.11,0.14,0.5), metal, 0,0,0);             // receiver/barrel shroud
+      add(new THREE.BoxGeometry(0.08,0.2,0.09), dark, 0,-0.15,0.12);       // grip
+      add(new THREE.BoxGeometry(0.07,0.22,0.07), dark, 0,-0.2,-0.05);      // mag
+      add(new THREE.BoxGeometry(0.03,0.1,0.28), dark, 0,0.02,0.28, 0,0,0); // folding stock
+      add(new THREE.CylinderGeometry(0.035,0.035,0.14,8), dark, 0,0,-0.32, Math.PI/2,0,0); // barrel tip
+    } else if(w.id === 'rifle'){
+      add(new THREE.BoxGeometry(0.1,0.13,0.72), metal, 0,0,0);             // receiver+barrel
+      add(new THREE.BoxGeometry(0.08,0.2,0.1), dark, 0,-0.16,0.12);        // grip
+      add(new THREE.BoxGeometry(0.075,0.24,0.09), dark, 0,-0.22,-0.06);    // curved mag (approx)
+      add(new THREE.BoxGeometry(0.06,0.08,0.22), dark, 0,0.04,0.36);       // stock
+      add(new THREE.BoxGeometry(0.05,0.05,0.3), dark, 0,0.11,-0.05);       // rail
+      add(new THREE.CylinderGeometry(0.03,0.03,0.16,8), dark, 0,0.11,-0.32, Math.PI/2,0,0); // sight/scope stub
+      add(new THREE.CylinderGeometry(0.025,0.025,0.1,8), dark, 0,0,-0.42, Math.PI/2,0,0);   // muzzle
+    } else if(w.id === 'shotgun'){
+      add(new THREE.CylinderGeometry(0.045,0.045,0.6,8), dark, 0,0.02,-0.05, Math.PI/2,0,0); // barrel
+      add(new THREE.BoxGeometry(0.09,0.09,0.28), wood, 0,-0.03,0.2);        // receiver (wood tone)
+      add(new THREE.BoxGeometry(0.08,0.08,0.3), wood, 0,0.02,0.42);         // stock
+      add(new THREE.BoxGeometry(0.05,0.05,0.4), dark, 0,-0.06,-0.05);       // pump/tube mag
+      add(new THREE.BoxGeometry(0.09,0.18,0.09), wood, 0,-0.14,0.14);       // grip
+    } else if(w.id === 'sniper'){
+      add(new THREE.BoxGeometry(0.09,0.1,0.85), metal, 0,-0.02,0.05);       // long receiver+barrel
+      add(new THREE.BoxGeometry(0.08,0.22,0.11), dark, 0,-0.17,0.18);       // grip
+      add(new THREE.BoxGeometry(0.06,0.16,0.06), dark, 0,-0.18,-0.12);      // mag
+      add(new THREE.BoxGeometry(0.07,0.09,0.28), dark, 0,0.02,0.42);        // stock
+      add(new THREE.CylinderGeometry(0.045,0.045,0.42,10), dark, 0,0.13,-0.02, Math.PI/2,0,0); // scope body
+      add(new THREE.CylinderGeometry(0.05,0.05,0.03,10), accent, 0,0.13,-0.22, Math.PI/2,0,0);  // scope lens
+      add(new THREE.CylinderGeometry(0.02,0.02,0.12,6), dark, 0,-0.05,-0.46, Math.PI/2,0,0);    // muzzle brake
+    }
+  }
+
+  /** Builds a detailed melee weapon model, shape varying by weapon id. */
+  buildMeleeModel(group, w){
+    const blade = new THREE.MeshLambertMaterial({ color: w.color });
+    const grip  = new THREE.MeshLambertMaterial({ color: 0x2a2a2e });
+    const wood  = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+    const add = (geo, mat, x,y,z, rx=0,ry=0,rz=0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+      group.add(m); return m;
+    };
+    if(w.id === 'knife'){
+      add(new THREE.CylinderGeometry(0.022,0.022,0.16,8), grip, 0,-0.08,0.05, 0,0,Math.PI/2.4);
+      add(new THREE.BoxGeometry(0.05,0.02,0.05), blade, 0,-0.01,0.1);          // guard
+      add(new THREE.BoxGeometry(0.045,0.012,0.32), blade, 0.02,0.05,-0.14);    // blade
+    } else if(w.id === 'bat'){
+      add(new THREE.CylinderGeometry(0.018,0.018,0.18,8), grip, 0,-0.14,0, 0,0,Math.PI/2.2);
+      add(new THREE.CylinderGeometry(0.025,0.045,0.5,8), wood, 0.02,0.1,0, 0,0,Math.PI/2.2); // barrel taper
+      add(new THREE.CylinderGeometry(0.02,0.02,0.03,8), blade, -0.05,-0.2,0, 0,0,Math.PI/2.2); // cap band
+    } else if(w.id === 'axe'){
+      add(new THREE.CylinderGeometry(0.02,0.02,0.42,8), wood, 0,-0.06,0, 0,0,Math.PI/2.4);
+      add(new THREE.BoxGeometry(0.05,0.16,0.03), blade, 0.16,0.08,0);          // axe head
+      add(new THREE.BoxGeometry(0.09,0.03,0.03), blade, 0.2,0.08,0);           // cutting edge
+    }
+  }
+
   /* -------------------- MAP BUILDING -------------------- */
   buildMap(){
     const m = this.mapConfig;
-    const floorMat = new THREE.MeshLambertMaterial({ color: m.floor });
+
+    const floorTex = this.makeTexture(m.floor, { cells:10, noise:16, repeatX:14, repeatY:14 });
+    const floorMat = new THREE.MeshLambertMaterial({ map: floorTex });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(this.arenaHalf*2, this.arenaHalf*2), floorMat);
     floor.rotation.x = -Math.PI/2;
     floor.receiveShadow = settings.shadows;
     this.scene.add(floor);
 
-    const wallMat = new THREE.MeshLambertMaterial({ color: m.wall });
+    const boundaryTex = this.makeTexture(m.wall, { cells:3, noise:10, repeatX:10, repeatY:2 });
+    const boundaryMat = new THREE.MeshLambertMaterial({ map: boundaryTex });
     const wallH = 8, half = this.arenaHalf;
     const wallDefs = [
       [0, wallH/2, -half, half*2, wallH, 1],
@@ -453,27 +552,116 @@ class GameEngine{
       [-half, wallH/2, 0, 1, wallH, half*2],
       [half, wallH/2, 0, 1, wallH, half*2],
     ];
-    wallDefs.forEach(([x,y,z,sx,sy,sz]) => this.addBox(x,y,z,sx,sy,sz,wallMat));
+    wallDefs.forEach(([x,y,z,sx,sy,sz]) => this.addBox(x,y,z,sx,sy,sz,boundaryMat));
 
-    // deterministic scattered cover using a seeded pattern (no external randomness needed for balance)
+    // real structured buildings with doorways, defined per-map
+    const buildingTex = this.makeTexture(m.wall, { cells:4, noise:18, repeatX:3, repeatY:2 });
+    const buildingMat = new THREE.MeshLambertMaterial({ map: buildingTex });
+    (m.buildings || []).forEach(b => this.addBuilding(b.x, b.z, b.w, b.d, b.h, b.doorSide, b.doorWidth, buildingMat, m.accent, m.neonTrim));
+
+    // deterministic scattered crates for extra cover (seeded so layout is stable)
     const accentMat = new THREE.MeshLambertMaterial({ color: m.accent });
-    const coverMat = new THREE.MeshLambertMaterial({ color: m.wall });
+    const crateTex = this.makeTexture(m.wall, { cells:2, noise:20, repeatX:1, repeatY:1 });
+    const crateMat = new THREE.MeshLambertMaterial({ map: crateTex });
     let seed = 1337;
     const rnd = () => { seed = (seed*1103515245 + 12345) & 0x7fffffff; return (seed % 1000)/1000; };
-    const coverCount = 22;
+    const coverCount = 14;
     for(let i=0;i<coverCount;i++){
       const x = (rnd()*2-1) * (half-8);
       const z = (rnd()*2-1) * (half-8);
-      if(Math.abs(x) < 6 && Math.abs(z) < 6) continue; // keep center clear-ish
-      const w = 2 + rnd()*2.5;
-      const d = 2 + rnd()*2.5;
-      const h = 1.4 + rnd()*2.4;
-      const mat = i % 4 === 0 ? accentMat : coverMat;
+      if(this.pointInObstacle(new THREE.Vector3(x,0,z), 3)) continue; // don't overlap buildings
+      const w = 1.6 + rnd()*1.6;
+      const d = 1.6 + rnd()*1.6;
+      const h = 1.2 + rnd()*1.6;
+      const mat = i % 4 === 0 ? accentMat : crateMat;
       this.addBox(x, h/2, z, w, h, d, mat);
     }
 
     this.floorY = 0;
   }
+
+  /** Procedurally generates a low-poly "paneled" texture (base color + grid lines + speckle noise) — no external image assets needed. */
+  makeTexture(baseHex, opts={}){
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const base = new THREE.Color(baseHex);
+    ctx.fillStyle = `rgb(${Math.round(base.r*255)},${Math.round(base.g*255)},${Math.round(base.b*255)})`;
+    ctx.fillRect(0,0,size,size);
+
+    let seed = opts.seed || 777;
+    const rnd = () => { seed = (seed*1103515245+12345)&0x7fffffff; return (seed%1000)/1000; };
+    const noiseAmt = opts.noise ?? 14;
+    for(let i=0;i<700;i++){
+      const x = rnd()*size, y = rnd()*size;
+      const b = (rnd()-0.5)*noiseAmt*2;
+      ctx.fillStyle = `rgba(${b>0?255:0},${b>0?255:0},${b>0?255:0},${Math.min(0.5,Math.abs(b)/60)})`;
+      ctx.fillRect(x,y,2,2);
+    }
+    const cells = opts.cells || 4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.32)';
+    ctx.lineWidth = 3;
+    const step = size/cells;
+    for(let i=0;i<=cells;i++){
+      ctx.beginPath(); ctx.moveTo(i*step,0); ctx.lineTo(i*step,size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i*step); ctx.lineTo(size,i*step); ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(opts.repeatX||2, opts.repeatY||2);
+    return tex;
+  }
+
+  /** Builds a building's 4 walls (one with a doorway gap) + a roof, and registers each wall segment as a collidable obstacle. */
+  addBuilding(cx, cz, w, d, h, doorSide, doorWidth, mat, accentHex, neonTrim){
+    const t = 0.6;
+    const halfW = w/2, halfD = d/2;
+    const buildWallX = (centerX, z, len) => this.addBox(centerX, h/2, z, len, h, t, mat); // wall running along X (north/south)
+    const buildWallZ = (x, centerZ, len) => this.addBox(x, h/2, centerZ, t, h, len, mat); // wall running along Z (east/west)
+
+    // north wall (-z side)
+    if(doorSide === 'north'){
+      const seg = (w - doorWidth)/2;
+      if(seg > 0.3){ buildWallX(cx-(doorWidth/2+seg/2), cz-halfD, seg); buildWallX(cx+(doorWidth/2+seg/2), cz-halfD, seg); }
+    } else {
+      buildWallX(cx, cz-halfD, w);
+    }
+    // south wall (+z side)
+    if(doorSide === 'south'){
+      const seg = (w - doorWidth)/2;
+      if(seg > 0.3){ buildWallX(cx-(doorWidth/2+seg/2), cz+halfD, seg); buildWallX(cx+(doorWidth/2+seg/2), cz+halfD, seg); }
+    } else {
+      buildWallX(cx, cz+halfD, w);
+    }
+    // west wall (-x side)
+    if(doorSide === 'west'){
+      const seg = (d - doorWidth)/2;
+      if(seg > 0.3){ buildWallZ(cx-halfW, cz-(doorWidth/2+seg/2), seg); buildWallZ(cx-halfW, cz+(doorWidth/2+seg/2), seg); }
+    } else {
+      buildWallZ(cx-halfW, cz, d);
+    }
+    // east wall (+x side)
+    if(doorSide === 'east'){
+      const seg = (d - doorWidth)/2;
+      if(seg > 0.3){ buildWallZ(cx+halfW, cz-(doorWidth/2+seg/2), seg); buildWallZ(cx+halfW, cz+(doorWidth/2+seg/2), seg); }
+    } else {
+      buildWallZ(cx+halfW, cz, d);
+    }
+
+    // roof
+    const roofMat = new THREE.MeshLambertMaterial({ color: 0x22252c });
+    this.addBox(cx, h+0.15, cz, w+0.6, 0.3, d+0.6, roofMat);
+
+    // neon trim accent strip (unlit, glow-like against dark surroundings) for the neon map
+    if(neonTrim){
+      const trimMat = new THREE.MeshBasicMaterial({ color: accentHex });
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(w+0.7, 0.12, d+0.7), trimMat);
+      trim.position.set(cx, h+0.32, cz);
+      this.scene.add(trim);
+    }
+  }
+
   addBox(x,y,z,sx,sy,sz,mat){
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), mat);
     mesh.position.set(x,y,z);
@@ -495,13 +683,25 @@ class GameEngine{
   createBot(index, color){
     const group = new THREE.Group();
     const bodyMat = new THREE.MeshLambertMaterial({ color });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6,1.1,0.35), bodyMat);
-    body.position.y = 0.95;
-    body.castShadow = settings.shadows;
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.36), bodyMat);
-    head.position.y = 1.7;
-    head.castShadow = settings.shadows;
-    group.add(body, head);
+    const skinMat = new THREE.MeshLambertMaterial({ color: 0xd8a878 });
+    const gunMat  = new THREE.MeshLambertMaterial({ color: 0x2a2c31 });
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.68,0.3), bodyMat);
+    torso.position.y = 1.15; torso.castShadow = settings.shadows;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.34,0.34,0.34), skinMat);
+    head.position.y = 1.68; head.castShadow = settings.shadows;
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.55,0.16), bodyMat);
+    armL.position.set(-0.32, 1.12, 0); armL.castShadow = settings.shadows;
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.55,0.16), bodyMat);
+    armR.position.set(0.32, 1.12, 0.05); armR.rotation.x = -0.3; armR.castShadow = settings.shadows;
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.6,0.2), skinMat);
+    legL.position.set(-0.14, 0.4, 0); legL.castShadow = settings.shadows;
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.6,0.2), skinMat);
+    legR.position.set(0.14, 0.4, 0); legR.castShadow = settings.shadows;
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.45), gunMat);
+    gun.position.set(0.34, 1.05, 0.32); gun.rotation.x = -0.15;
+
+    group.add(torso, head, armL, armR, legL, legR, gun);
 
     // health bar sprite
     const barCanvas = document.createElement('canvas');
@@ -514,11 +714,11 @@ class GameEngine{
     group.add(barSprite);
 
     const spawn = this.randomSpawn();
-    group.position.copy(spawn);
+    group.position.set(spawn.x, 0, spawn.z);
     this.scene.add(group);
 
     const bot = {
-      group, body, head, barCanvas, barTex,
+      group, body:torso, head, barCanvas, barTex,
       health: 100, maxHealth:100, alive:true,
       state:'patrol', target:this.randomSpawn(), speed: 2.2 + Math.random()*0.8,
       fireRate: 900 + Math.random()*500, lastFire:0, lastRetarget:0,
@@ -551,7 +751,8 @@ class GameEngine{
   pointInObstacle(p, margin){
     for(const o of this.obstacles){
       if(p.x > o.box.min.x-margin && p.x < o.box.max.x+margin &&
-         p.z > o.box.min.z-margin && p.z < o.box.max.z+margin) return true;
+         p.z > o.box.min.z-margin && p.z < o.box.max.z+margin &&
+         p.y > o.box.min.y-margin && p.y < o.box.max.y+margin) return true;
     }
     return false;
   }
@@ -721,7 +922,8 @@ class GameEngine{
     bot.health = bot.maxHealth;
     bot.alive = true;
     bot.group.visible = true;
-    bot.group.position.copy(this.randomSpawn());
+    const spawn = this.randomSpawn();
+    bot.group.position.set(spawn.x, 0, spawn.z);
     bot.state = 'patrol';
     this.drawBotHealth(bot);
   }
