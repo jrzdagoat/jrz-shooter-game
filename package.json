@@ -1,0 +1,49 @@
+{
+  "name": "jrz-shooter-game",
+  "version": "1.0.0",
+  "description": "JRZ's Shooter Game — a browser-based FPS against AI bots, packaged as a desktop app.",
+  "main": "electron-main.js",
+  "author": "jrz",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.jrz.shootergame",
+    "productName": "JRZ's Shooter Game",
+    "files": [
+      "index.html",
+      "style.css",
+      "game.js",
+      "vendor/**/*",
+      "electron-main.js",
+      "build/**/*"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png"
+    }
+  }
+}

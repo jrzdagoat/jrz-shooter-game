@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JRZ's Shooter Game</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========================= LOADING SCREEN ========================= -->
+<div id="loading-screen">
+  <div class="load-wrap">
+    <div class="load-title">JRZ<span>'</span>S SHOOTER GAME</div>
+    <div class="load-bar-track">
+      <div class="load-bar-fill" id="load-bar-fill"></div>
+    </div>
+    <div class="load-status" id="load-status">Booting range systems…</div>
+    <div class="load-tip" id="load-tip">Tip: Melee attacks are silent — bots won't hear you coming.</div>
+  </div>
+</div>
+
+<!-- ========================= MAIN MENU ========================= -->
+<div id="main-menu" class="screen hidden">
+  <div class="menu-bg-grid"></div>
+  <div class="menu-panel">
+    <div class="game-title">JRZ<span>'</span>S<br>SHOOTER GAME</div>
+    <div class="menu-buttons">
+      <button class="menu-btn primary" id="btn-play">Play</button>
+      <button class="menu-btn" id="btn-loadout">Loadout</button>
+      <button class="menu-btn" id="btn-maps">Map Select</button>
+      <button class="menu-btn" id="btn-settings">Settings</button>
+      <button class="menu-btn" id="btn-howto">How To Play</button>
+    </div>
+    <div class="menu-footer">Bots: <span id="menu-bot-count">6</span> &nbsp;|&nbsp; Map: <span id="menu-map-name">Warehouse</span> &nbsp;|&nbsp; Loadout: <span id="menu-loadout-name">Rifle + Knife</span></div>
+  </div>
+</div>
+
+<!-- ========================= LOADOUT SCREEN ========================= -->
+<div id="loadout-screen" class="screen hidden">
+  <div class="sub-header">
+    <button class="back-btn" data-back="main-menu">&larr; Back</button>
+    <h2>Loadout</h2>
+  </div>
+  <div class="loadout-columns">
+    <div class="loadout-col">
+      <h3>Primary Weapon</h3>
+      <div class="weapon-grid" id="gun-grid"></div>
+    </div>
+    <div class="loadout-col">
+      <h3>Melee Weapon</h3>
+      <div class="weapon-grid" id="melee-grid"></div>
+    </div>
+  </div>
+  <div class="loadout-detail" id="loadout-detail">Select a weapon to see its stats.</div>
+</div>
+
+<!-- ========================= MAP SELECT SCREEN ========================= -->
+<div id="map-screen" class="screen hidden">
+  <div class="sub-header">
+    <button class="back-btn" data-back="main-menu">&larr; Back</button>
+    <h2>Map Select</h2>
+  </div>
+  <div class="map-grid" id="map-grid"></div>
+  <div class="map-bot-slider">
+    <label for="bot-count-slider">Bot Count: <span id="bot-count-label">6</span></label>
+    <input type="range" id="bot-count-slider" min="1" max="12" value="6" step="1">
+  </div>
+</div>
+
+<!-- ========================= SETTINGS SCREEN ========================= -->
+<div id="settings-screen" class="screen hidden">
+  <div class="sub-header">
+    <button class="back-btn" data-back="main-menu">&larr; Back</button>
+    <h2>Settings</h2>
+  </div>
+  <div class="settings-columns">
+    <div class="settings-col">
+      <h3>Performance</h3>
+      <div class="setting-row">
+        <label>FPS Limit</label>
+        <select id="fps-limit-select">
+          <option value="30">30 FPS</option>
+          <option value="60" selected>60 FPS</option>
+          <option value="120">120 FPS</option>
+          <option value="144">144 FPS</option>
+          <option value="0">Unlimited</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>Render Quality</label>
+        <select id="quality-select">
+          <option value="low">Low (best FPS)</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>Shadows</label>
+        <select id="shadow-select">
+          <option value="off">Off</option>
+          <option value="on" selected>On</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label>Draw Distance</label>
+        <input type="range" id="draw-distance-slider" min="40" max="200" value="120" step="10">
+        <span id="draw-distance-label" class="setting-val">120</span>
+      </div>
+      <h3>Controls</h3>
+      <div class="setting-row">
+        <label>Mouse Sensitivity</label>
+        <input type="range" id="sensitivity-slider" min="1" max="20" value="8" step="1">
+        <span id="sensitivity-label" class="setting-val">8</span>
+      </div>
+      <div class="setting-row">
+        <label>Invert Y</label>
+        <input type="checkbox" id="invert-y-check">
+      </div>
+    </div>
+    <div class="settings-col">
+      <h3>Keybinds</h3>
+      <div class="keybind-list" id="keybind-list"></div>
+      <button class="menu-btn small" id="btn-reset-binds">Reset to Defaults</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================= HOW TO PLAY ========================= -->
+<div id="howto-screen" class="screen hidden">
+  <div class="sub-header">
+    <button class="back-btn" data-back="main-menu">&larr; Back</button>
+    <h2>How To Play</h2>
+  </div>
+  <div class="howto-body">
+    <p>Click <b>Play</b> then click the game window to lock your mouse. Move with your movement keys, aim with the mouse, and fire with your shoot key.</p>
+    <ul>
+      <li><b>1-5</b> — Switch weapon slots (gun, melee)</li>
+      <li><b>Left Click</b> — Fire / Swing</li>
+      <li><b>Right Click</b> — Aim down sights</li>
+      <li><b>R</b> — Reload</li>
+      <li><b>Shift</b> — Sprint</li>
+      <li><b>Space</b> — Jump</li>
+      <li><b>Ctrl</b> — Crouch</li>
+      <li><b>Esc</b> — Pause / unlock mouse</li>
+    </ul>
+    <p>All keys are rebindable from the Settings screen. Bots patrol, hunt, and shoot back — take them out before they take you out. Highest kill count wins the round.</p>
+  </div>
+</div>
+
+<!-- ========================= GAME CANVAS + HUD ========================= -->
+<div id="game-screen" class="screen hidden">
+  <canvas id="game-canvas"></canvas>
+
+  <div id="crosshair">
+    <div class="ch-line ch-top"></div>
+    <div class="ch-line ch-bottom"></div>
+    <div class="ch-line ch-left"></div>
+    <div class="ch-line ch-right"></div>
+  </div>
+  <div id="hitmarker"></div>
+
+  <div id="hud">
+    <div id="hud-topleft">
+      <div id="fps-counter">FPS: 0</div>
+    </div>
+    <div id="hud-topright">
+      <div id="scoreboard">Kills: <span id="kill-count">0</span> &nbsp;/&nbsp; Deaths: <span id="death-count">0</span></div>
+    </div>
+    <div id="hud-bottomleft">
+      <div id="health-wrap">
+        <div class="hud-label">HEALTH</div>
+        <div class="bar-track"><div class="bar-fill health-fill" id="health-fill"></div></div>
+      </div>
+      <div id="stamina-wrap">
+        <div class="hud-label">STAMINA</div>
+        <div class="bar-track"><div class="bar-fill stamina-fill" id="stamina-fill"></div></div>
+      </div>
+    </div>
+    <div id="hud-bottomright">
+      <div id="weapon-name">Rifle</div>
+      <div id="ammo-count">30 / 90</div>
+    </div>
+    <div id="killfeed"></div>
+    <div id="damage-flash"></div>
+  </div>
+
+  <div id="pause-menu" class="hidden">
+    <div class="pause-panel">
+      <h2>Paused</h2>
+      <button class="menu-btn primary" id="btn-resume">Resume</button>
+      <button class="menu-btn" id="btn-pause-settings">Settings</button>
+      <button class="menu-btn" id="btn-quit">Quit to Menu</button>
+    </div>
+  </div>
+
+  <div id="death-screen" class="hidden">
+    <div class="death-panel">
+      <h2 id="death-text">You Died</h2>
+      <p id="death-sub">Eliminated. Respawning gets you back in the fight.</p>
+      <button class="menu-btn primary" id="btn-respawn">Respawn</button>
+      <button class="menu-btn" id="btn-death-quit">Quit to Menu</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
